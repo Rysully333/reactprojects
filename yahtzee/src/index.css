@@ -1,0 +1,188 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #2E3A46;
+  color: #343a40;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+main {
+  display: flex;
+  justify-content: space-around;
+}
+
+.container {
+  width: 99vw;
+  height: 99vh;
+  background-color: #F0F4F8;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  text-align: center;
+  padding: 0px;
+}
+
+.roll-container {
+  background-color: #8EAEC9;
+  width: 40%;
+  border-radius: 8px;
+  margin: 10px;
+  border: 1px solid black
+  /* display: flex; */
+}
+
+header {
+  background-color: #007bff;
+  color: #ffffff;
+  padding: 10px 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.dice-container {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+}
+
+.dice {
+  width: 60px;
+  height: 60px;
+  background-color: #f8f9fa;
+  border: 2px solid #343a40;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  margin: 10px;
+}
+
+.dice:hover {
+  background-color: #e9ecef;
+}
+
+.scoreboard {
+  margin: -60px 50px;
+}
+
+.scoreboard table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.scoreboard th, .scoreboard td {
+  padding: 8px;
+  border: 1px solid #dee2e6;
+  font-size: 12px;
+  max-width: 80px;
+}
+
+.fit-content {
+  max-width: none;
+  white-space: normal;
+}
+
+.reroll-button {
+  padding: 10px 20px;
+  margin: 20px 0;
+  background-color: #E53935;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.reroll-button:hover {
+  background-color: #E50935;
+}
+
+.dont-reroll-button {
+  padding: 10px 20px;
+  margin: 20px 0;
+  background-color: #A93226;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.start-button {
+  padding: 10px 20px;
+  margin: 20px 0;
+  background-color: #2124d3;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+nav {
+  width: 100%;
+  background-color: #2E3A46;
+  padding: 10px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+nav ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+}
+
+nav li {
+  margin: 0 15px;
+}
+
+nav a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+.scoreposs {
+  color: #A0A0A0
+}
+
+.scoreposs:hover {
+  color: #2E3A46;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.turnAnnouncer {
+  font-size: 40px;
+  margin: 60px
+}
+
+.playerName {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button {
+  margin: 10px
+}
+
+.warning {
+  color: red
+}
