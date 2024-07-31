@@ -14,13 +14,9 @@ export default function Scorecard({players, curPlayerIndex, possibleScores, acti
         };
         return <th key={index} style={styles}>{player}</th>
     })
-
-    console.log(`Player headers: ${playerHeaders}`)
-
     
     const updateScore = (category => {
         const newScore = possibleScores[category]
-        console.log(`New score: ${newScore}, category: ${JSON.stringify(category)}, curPlayerIndex: ${curPlayerIndex}`)
         setScores(prevScores => ({
             ...prevScores,
             [category]: prevScores[category].map((score, index) => index==curPlayerIndex ? newScore : score)
@@ -30,7 +26,6 @@ export default function Scorecard({players, curPlayerIndex, possibleScores, acti
     
     //Stack tableRows for all categories
     const baseTable = categories.map(category => {
-        console.log(category)
         return <TableRow 
         key={nanoid()} 
         category={category} 
@@ -73,11 +68,8 @@ export default function Scorecard({players, curPlayerIndex, possibleScores, acti
             const winnerIdx = finalTotals.reduce((maxIdx, curValue, curIdx, arr) => {
                 return curValue > arr[maxIdx] ? curIdx : maxIdx
             }, 0)
-            console.log(`Scores: ${JSON.stringify(scores)}`)
-            console.log(`Bool check: ${Number.isInteger(scores['Ones'][0])}`)
             setWinner(players[winnerIdx])
         }
-        console.log(`Scores values: ${JSON.stringify(Object.values(scores))}`)
     }, [scores])
     
     return (

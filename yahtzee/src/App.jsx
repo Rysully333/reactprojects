@@ -139,8 +139,6 @@ function App() {
     })
   }
 
-  console.log(`Winner: ${winner}`)
-
   return (
     <div className='container'>
       <Navbar />
