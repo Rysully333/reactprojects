@@ -1,0 +1,148 @@
+/* General Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body and Main Layout */
+body {
+  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #D2B48C; /* Tan */
+}
+
+/* Navbar */
+#navbar {
+  background-color: #8B4513; /* SaddleBrown */
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+}
+
+#navbar .navbar-title {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+#navbar .navbar-links a {
+  color: white;
+  text-decoration: none;
+  margin: 0 10px;
+  font-size: 18px;
+}
+
+#navbar .navbar-links a:hover {
+  text-decoration: underline;
+}
+
+/* Banner */
+#banner {
+  display: flex;
+  background-color: #A0522D; /* Sienna */
+  color: white;
+  padding: 10px;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* Main Content */
+#main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 20px;
+}
+
+/* Chessboard and Chat Display Container */
+#content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Chessboard Section */
+#chessboard-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #F5DEB3; /* Wheat */
+  border-right: 2px solid #8B4513; /* SaddleBrown */
+}
+
+/* Chat Display Section */
+#chat-display-section {
+  display: flex;
+  flex-direction: column;
+  background-color: #FFE4C4; /* Bisque */
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 80px - 80px); /* Adjust based on navbar and banner height */
+}
+
+.message {
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+.message.user {
+  background-color: #D2B48C; /* Tan */
+  align-self: flex-end;
+}
+
+.message.bot {
+  background-color: #A0522D; /* Sienna */
+  align-self: flex-start;
+}
+
+/* Input Area */
+#input-area {
+  flex: 1;
+  display: flex;
+  padding: 10px;
+  border-top: 1px solid #8B4513; /* SaddleBrown */
+  background-color: #FFE4C4; /* Bisque */
+}
+
+#input-area textarea {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #8B4513; /* SaddleBrown */
+  border-radius: 4px;
+  resize: none;
+}
+
+button {
+  padding: 10px 20px;
+  margin-left: 10px;
+  font-size: 16px;
+  background-color: #8B4513; /* SaddleBrown */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #A0522D; /* Sienna */
+}
+
+/* Draggable Splitter */
+#splitter {
+  width: 5px;
+  background-color: #8B4513; /* SaddleBrown */
+  cursor: col-resize;
+}
+
+.editButton {
+  margin: 15px;
+}
