@@ -17,7 +17,7 @@ const boardToPosition = (board) => {
     return position;
 };
 
-const boardToFen = (board) => {
+const boardToFen = (board, color) => {
     let fen = '';
     for (let i = 0; i < board.length; i++) {
         let empty = 0;
@@ -41,7 +41,7 @@ const boardToFen = (board) => {
         }
     }
     // Simplified FEN ending, may need to adjust based on your requirements
-    fen += ' w KQkq - 0 1'; 
+    fen += ` ${color} KQkq - 0 1`
     return fen;
 };
 

@@ -3,12 +3,15 @@ const ChatDisplay = ({messages, style}) => {
         return (
             <div
                 key={index}
-                className={`message ${message.sender}`}
+                className={`message ${message.role}`}
             >
-                {message.text}
+                {message.content}
             </div>
         )
     })
+
+    console.log("Hello")
+    console.log(messageElements)
 
     return (
         <div id='chat-display-section' style={style}>

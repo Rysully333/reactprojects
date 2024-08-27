@@ -1,11 +1,16 @@
 import express from 'express'
 import { exec } from 'child_process'
+import cors from 'cors'
+import ChessEcoCodes from 'chess-eco-codes'
 
 import pkg from '@lmstudio/sdk';
 const { LMStudioClient } = pkg;
 
 const app = express();
 const port = 5100;
+let currentBody = {}
+
+app.use(cors())
 
 app.use(express.json());
 
@@ -13,40 +18,80 @@ app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
-app.get('/generate', async (req, res) => {
-    const messages = req.body.messages
+app.post('/generate', async (req, res) => {
+    currentBody = req.body
+    console.log("Messages:")
+    console.log(currentBody.messages)
+    res.status(200).json({ message: 'Prompt received' });
     // const position = req.body.position
+})
 
-    async function main(messages) {
+app.get('/stream', async (req, res) => {
+    async function main(body) {
         // Create a client to connect to LM Studio, then load a model
         const client = new LMStudioClient();
         const model = await client.llm.load("Meta/Llama/Meta-Llama-3.1-8B-Instruct-128k-Q4_0.gguf");
+
+        const { messages, position } = body
+
+        console.log(position)
+        console.log(ChessEcoCodes(position))
+
+        const queensGambitPos = "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2"
+        console.log(`Position: ${queensGambitPos}`)
+        console.log(ChessEcoCodes(queensGambitPos))
+
+        const stringOpening = JSON.stringify(ChessEcoCodes(queensGambitPos))
         
         // Predict!
         const prediction = model.respond([
-            { role: "system", content: "You are a helpful AI assistant." },
+            { role: "system", content: "You are a helpful chess AI assistant." },
+            // { role: "system", content: `Here is the current position of the chess board in FEN string: ${position}\nCurrent opening: ${ChessEcoCodes(position).name}`},
+            { role: "user", content: `Here is the current position of the chess board in FEN string: ${queensGambitPos}\nCurrent opening: ${stringOpening}`},
             ...messages
         ]);
 
-        let output = ''
+        console.log(`Current opening: ${stringOpening}`)
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
 
         for await (const text of prediction) {
-            output += text;
-            console.log(text)
+          if (text == "") console.log("BLANK");
+          console.log(`Sending: ${JSON.stringify(text)}\n\n`)
+          res.write(`data: ${JSON.stringify(text)}\n\n`);
         }
 
-        console.log(output)
-        return output
+        res.write('data: [DONE]\n\n');
+        res.end();
+
+        // console.log(`Posiiton: ${position}`)
+
+        // let output = ''
+
+        // for await (const text of prediction) {
+        //     output += text;
+        //     console.log(text)
+        // }
+
+        // console.log(output)
+        // return output
     }
-    const output = await main(messages)
-    console.log(output)
-    res.json({
-        'response': output
-    })
+    // const outmessage = await main(body)
+    // console.log("Output from server:")
+    // console.log(outmessage)
+    // return res.json({
+    //     'response': outmessage
+    // })
+    main(currentBody).catch(error => {
+      console.error('Error generating response:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
 })
 
 const server = app.listen(port, () => {
-  exec('lms server start', (error, stdout, stderr) => {
+  exec('lms server start --cors=true', (error, stdout, stderr) => {
     if (error) {
       console.error(`Error stopping LMS server: ${error.message}`);
       return;

@@ -6,6 +6,7 @@ import Board from './components/Board'
 import ChatDisplay from './components/ChatDisplay'
 import ChatInput from './components/ChatInput'
 import Banner from './components/Banner'
+import ToggleButton from './components/ToggleButton'
 
 function App() {
   const [messages, setMessages] = useState([{role: "assistant", content: "Let me know if you have any questions!"}])
@@ -16,6 +17,7 @@ function App() {
 
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [isWhiteToMove, setIsWhiteToMove] = useState(true)
   
   console.log(`History: ${game.history()}`)
   
@@ -61,7 +63,7 @@ function App() {
         <div id='main-content'>
           <div id='content'>
             <div id='chessboard-section' style={{ flex: split }}>
-              <Board {... {game, setHistory, position, setPosition, editing, deleting}} />
+              <Board {... {game, setHistory, position, setPosition, editing, deleting, isWhiteToMove}} />
               <div className='button-container'>
                 {editing ? 
                   <div>
@@ -71,6 +73,7 @@ function App() {
                     <button className='editButton' onClick={clearBoard}>Clear</button>
                     <button className='editButton' onClick={resetBoard}>Reset</button>
                     <button className='editButton' onClick={() => setEditing(false)}>Done</button> 
+                    <ToggleButton isWhiteToMove={isWhiteToMove} onToggle={() => setIsWhiteToMove(prevmove => !prevmove)} />
                   </div> :
                   <button className='editButton' onClick={() => setEditing(true)}>Edit Board</button>
                 }
@@ -79,7 +82,7 @@ function App() {
             <div id="splitter" onMouseDown={handleMouseDown}></div>
             <ChatDisplay messages={messages} style={{ flex: 100 - split }}/>
           </div>
-          <ChatInput {... {messages, setMessages, input, setInput}} />
+          <ChatInput {... {messages, setMessages, input, setInput, game}} />
         </div>
       </body>
     </>
