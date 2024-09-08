@@ -1,23 +1,64 @@
+import dotenv from 'dotenv'
+dotenv.config()
 import express from 'express'
 import { exec } from 'child_process'
 import cors from 'cors'
-import ChessEcoCodes from 'chess-eco-codes'
+// import ChessEcoCodes from 'chess-eco-codes'
+import util from 'util'
+const execPromise = util.promisify(exec);
 
 import pkg from '@lmstudio/sdk';
 const { LMStudioClient } = pkg;
 
 const app = express();
-const port = 5100;
 let currentBody = {}
+let model;
+let server;
 
 app.use(cors())
 
 app.use(express.json());
 
+const initializeApp = async () => {
+  
+  //Start up the LMS server
+  try {
+    console.log('Starting LMS server...');
+    const { stdout, stderr } = await execPromise('lms server start --cors=true');
+    
+    if (stderr) {
+        console.error(`Error: ${stderr}`);
+    }
+    
+    console.log(`LMS server started successfully: ${stdout}`);
+  } catch (error) {
+      console.error(`Error starting LMS server: ${error.message}`);
+  }
+
+  console.log("Done Trying");
+
+  // Create a client to connect to LM Studio, then load a model
+  const client = new LMStudioClient();
+  try {
+      model = await client.llm.load(process.env.MODEL_PATH);
+      console.log('Model loaded successfully');
+  } catch (error) {
+      console.error(`Error loading model: ${error.message}`);
+  }
+    
+  server = app.listen(process.env.PORT, async () => {
+  console.log(`Server is running on http://localhost:${process.env.PORT}`);
+  });
+};
+
+//automatically run when the server starts
+initializeApp();
+
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
+//not needed?
 app.post('/generate', async (req, res) => {
     currentBody = req.body
     console.log("Messages:")
@@ -28,30 +69,53 @@ app.post('/generate', async (req, res) => {
 
 app.get('/stream', async (req, res) => {
     async function main(body) {
-        // Create a client to connect to LM Studio, then load a model
-        const client = new LMStudioClient();
-        const model = await client.llm.load("Meta/Llama/Meta-Llama-3.1-8B-Instruct-128k-Q4_0.gguf");
 
         const { messages, position } = body
 
         console.log(position)
-        console.log(ChessEcoCodes(position))
+        // console.log(ChessEcoCodes(position))
 
-        const queensGambitPos = "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2"
-        console.log(`Position: ${queensGambitPos}`)
-        console.log(ChessEcoCodes(queensGambitPos))
+        // const queensGambitPos = "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2"
+        // console.log(`Position: ${queensGambitPos}`)
+        // console.log(ChessEcoCodes(queensGambitPos))
 
-        const stringOpening = JSON.stringify(ChessEcoCodes(queensGambitPos))
-        
+        // const stringOpening = JSON.stringify(ChessEcoCodes(queensGambitPos))
+        // const stringOpening = JSON.stringify(ChessEcoCodes(position))
+        let data=""
+
+        try {
+          const response = await fetch(`https://explorer.lichess.ovh/masters?fen=${position}`, {
+              method: "GET",
+              headers: {
+                  "Content-Type": "application/json"
+              }
+          });
+      
+          if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+      
+          data = await response.json(); // Parse the JSON response
+          console.log('Opening data:', data); // Log or handle the JSON data
+        } catch (error) {
+            console.error('Error fetching opening data:', error);
+        }
+
+        const prompt = `Here is your Background information: the current position of the chess board in FEN string: ${position}\nCurrent opening: ${JSON.stringify(data.opening)}
+        \nHere is the opening game data, where the "white", "black", and "draw" fields are the number of games won by white, black, and drawn, respectively: ${JSON.stringify(data)}\n\n
+        Now, continue this conversation as if you knew this all along, and I do not know this information.`
+              
+        console.log(prompt)
+
         // Predict!
         const prediction = model.respond([
-            { role: "system", content: "You are a helpful chess AI assistant." },
+            { role: "system", content: "You are a helpful chess AI assistant. At the start of *every* prompt, state 'I like chess!'" },
             // { role: "system", content: `Here is the current position of the chess board in FEN string: ${position}\nCurrent opening: ${ChessEcoCodes(position).name}`},
-            { role: "user", content: `Here is the current position of the chess board in FEN string: ${queensGambitPos}\nCurrent opening: ${stringOpening}`},
+            { role: "user", content: prompt},
             ...messages
         ]);
 
-        console.log(`Current opening: ${stringOpening}`)
+        // console.log(`Current opening: ${stringOpening}`)
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -90,20 +154,6 @@ app.get('/stream', async (req, res) => {
     });
 })
 
-const server = app.listen(port, () => {
-  exec('lms server start --cors=true', (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error stopping LMS server: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`Error: ${stderr}`);
-      return;
-    }
-    console.log(`LMS server stopped successfully: ${stdout}`);
-  });
-  console.log(`Server is running on http://localhost:${port}`);
-});
 
 // Function to run when server shuts down
 function onShutdown() {

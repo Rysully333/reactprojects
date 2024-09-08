@@ -46,7 +46,7 @@ const boardToFen = (board, color) => {
 };
 
 
-export default function Board({game, setHistory, position, setPosition, editing, deleting}) {
+export default function Board({game, setHistory, position, setPosition, editing, deleting, isWhiteToMove}) {
 
     const onSquareClick = (square) => {
         if (editing && deleting) {
@@ -57,7 +57,7 @@ export default function Board({game, setHistory, position, setPosition, editing,
     const removePiece = (square) => {
         const board = game.board();
         board[8 - parseInt(square[1], 10)][square.charCodeAt(0) - 97] = null;
-        game.load(boardToFen(board));
+        game.load(boardToFen(board, isWhiteToMove ? 'w' : 'b'));
         setPosition(game.fen());
     };
 
@@ -74,7 +74,8 @@ export default function Board({game, setHistory, position, setPosition, editing,
                 {square: targetSquare, type: piece.toLowerCase()[1], color: piece[0]}
             console.log(`newBoard: ${newBoard}`)
 
-            const newPosition = boardToFen(newBoard)
+            const newPosition = boardToFen(newBoard, isWhiteToMove ? 'w' : 'b')
+            console.log(`newPosition: ${newPosition}`)
             game.load(newPosition)
             console.log(game.ascii())
             console.log(game.fen())
