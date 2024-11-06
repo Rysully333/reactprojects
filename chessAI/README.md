@@ -22,11 +22,16 @@ To run the backend, navigate to the server.js file, and run "node server.js"
 
 ### Example Use Cases
 Ask for information about a current position:
+
 User: "What can you tell me about my current position?"
+
 Agent: responds with the opening name (if applicable), common or advisable next moves, possibly some games that have reached that position, and any theory surrounding the position.
 
+
 Ask to explore a specific position:
+
 User: "Can we explore the sicilian defense?"
+
 Agent: Will first, through a board reset and a series of moves, will bring the board to the Sicilian Defense setup. Then, will describe theory about the position, and possible lines. Can enact any of those moves at the user's request
 
 ### Limitations
