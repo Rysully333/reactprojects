@@ -32,7 +32,7 @@ Ask to explore a specific position:
 
 User: "Can we explore the sicilian defense?"
 
-Agent: Will first, through a board reset and a series of moves, will bring the board to the Sicilian Defense setup. Then, will describe theory about the position, and possible lines. Can enact any of those moves at the user's request
+Agent: First, through a board reset and a series of moves, will bring the board to the Sicilian Defense setup. Then it will describe theory about the position, and possible lines. Can enact any of those moves at the user's request.
 
 ### Limitations
 As I have discovered, LLMs are fundamentally bad at chess (which makes sense). Given free reign, it will hallucinate board positions, remove pieces from existence, try illegal moves, etc. I have attempted to mitigate this by letting the Lichess database provide as much of the analysis as possible, leaving the LLM to only interact with the user to explain the analysis handed to it. Upon giving the agent the ability to manipulate the board, there were significantly more impactful hallucinations. I have tried to reduce these with move validation combined with repeated model prompting if invalid moves were made, but it is not yet perfect. Be warned.
