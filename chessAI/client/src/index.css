@@ -178,3 +178,13 @@ button:hover {
 .toggle-button:hover {
   border-color: #888;
 }
+
+/* Adjusts the left margin/padding for unordered list items */
+.message ul {
+  margin-left: 1rem;  /* Adjust this value for more or less indentation */
+}
+
+/* Adjusts the left margin/padding for ordered list items */
+.message ol {
+  margin-left: 1rem;
+}

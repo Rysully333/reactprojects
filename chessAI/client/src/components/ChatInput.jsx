@@ -1,23 +1,55 @@
 import { useState } from "react";
 
-export default function ChatInput({input, setInput, messages, setMessages, game}) {
+export default function ChatInput({input, setInput, messages, setMessages, game, setHistory, setPosition}) {
     const handleGenerate = async (updatedMessages) => {
-        // const url = 'http://localhost:5100/generate'
-        const response = await fetch('http://localhost:5100/generate', {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                "messages": updatedMessages,
-                "history": game.history(),
-                "position": game.fen()
-            })
-        })
+        let success = false
+        let response = null
+        let failCounter = 0
 
-        if (!response.ok) {
-            console.error('Failed to start the generation process');
-            return;
+        // Generate, making sure any moves are valid and retrying if they are not
+        while (!success && failCounter < 10) {
+            response = await fetch('http://localhost:5100/generate', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    "messages": updatedMessages,
+                    "history": game.history(),
+                    "position": game.fen()
+                })
+            })
+
+            if (!response.ok) {
+                console.error('Failed to start the generation process');
+                return;
+            }
+            const data = await response.json()
+            console.log(data)
+
+            try {
+                // Check if the response dictates a move
+                if (data.moveInstruction.moveMade) {
+                    if (data.moveInstruction.resetBoard) {
+                        game.reset()
+                    }
+                    const moves = data.moveInstruction.moves
+                    for (let i = 0; i < moves.length; i++) {
+                        game.move(moves[i])
+                    }
+                    setPosition(game.fen())
+                    setHistory(game.history())
+                }
+                success = true
+            } catch (error) {
+                // Retry if the move was invalid
+                console.error('Error generating response:', error);
+                failCounter++;
+            }
+        }
+
+        if (failCounter >= 10) {
+            console.error('Failed to generate a valid move after 10 attempts');
         }
 
         const eventSource = new EventSource('http://localhost:5100/stream');
@@ -29,8 +61,8 @@ export default function ChatInput({input, setInput, messages, setMessages, game}
                 eventSource.close();
             } else {
                 returnMessage+=JSON.parse(event.data)
-                console.log(`Char: ${event.data}`)
-                console.log(`char parsed: ${JSON.parse(event.data)}`)
+                // console.log(`Char: ${event.data}`)
+                // console.log(`char parsed: ${JSON.parse(event.data)}`)
                 setMessages([...updatedMessages, {content: returnMessage, role: "assistant"}]);
             }
         };
@@ -50,49 +82,6 @@ export default function ChatInput({input, setInput, messages, setMessages, game}
             setInput('');
 
             await handleGenerate(updatedMessages)
-
-            // Simulate chatbot response (replace with actual chatbot logic)
-            // setTimeout(() => {
-            //     setMessages((prevMessages) => [
-            //         ...prevMessages,
-            //         { content: 'This is a simulated response.', role: 'assistant' },
-            //     ]);
-            // }, 500);
-
-            // const url = "http://localhost:5100/generate"
-
-            // let response = null
-
-            // try {
-            //     const result = await fetch(url, {
-            //         method: "POST",
-            //         headers: {
-            //             'Content-Type': 'application/json',
-            //         },
-            //         body: JSON.stringify({
-            //             "messages": updatedMessages,
-            //             "history": game.history(),
-            //             "position": game.fen()
-            //         })
-            //     })
-
-            //     const data = await result.json()
-                
-            //     response = data.response
-            //     console.log("Fetch success!")
-            //     console.log(response)
-            // } catch (error) {
-            //     console.error('Error fetching data:', error);
-            // }
-
-            // if (!response) {
-            //     response = "Sorry, there was an error generating a response."
-            // }
-
-            // setMessages((prevMessages) => [
-            //     ...updatedMessages,
-            //     { content: response, role: 'assistant' },
-            // ])
             
         }
     };

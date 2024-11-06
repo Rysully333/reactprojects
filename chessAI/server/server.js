@@ -1,228 +1,184 @@
 import dotenv from 'dotenv'
 dotenv.config()
 import express from 'express'
-import { exec } from 'child_process'
 import cors from 'cors'
-// import ChessEcoCodes from 'chess-eco-codes'
-import util from 'util'
-const execPromise = util.promisify(exec);
 
-import pkg from '@lmstudio/sdk';
-const { LMStudioClient } = pkg;
+import LLMAdapter from './LLMAdapters/LLMAdapter.js'
+import CohereLLMAdapter from './LLMAdapters/CohereLLMAdapter.js'
+import LocalLLMAdapter from './LLMAdapters/LocalLLMAdapter.js'
+
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 
 const app = express();
+
+// Needed state variables
 let currentBody = {}
-let model;
 let server;
 
 app.use(cors())
 
 app.use(express.json());
 
+// Parse command-line arguments
+const argv = yargs(hideBin(process.argv))
+    .option('local', {
+        type: 'boolean',
+        description: 'Use the local LLM',
+        default: false
+    })
+    .argv;
+
+const useLocalModel = argv.local;
+
+console.log(`Using ${useLocalModel ? 'local' : 'Cohere'} LLM`);
+
+const model = useLocalModel ? new LocalLLMAdapter() : new CohereLLMAdapter(process.env.COHERE_API_KEY);
+
+
 const initializeApp = async () => {
-  
-  //Start up the LMS server
-  try {
-    console.log('Starting LMS server...');
-    const { stdout, stderr } = await execPromise('lms server start --cors=true');
-    
-    if (stderr) {
-        console.error(`Error: ${stderr}`);
-    }
-    
-    console.log(`LMS server started successfully: ${stdout}`);
-  } catch (error) {
-      console.error(`Error starting LMS server: ${error.message}`);
-  }
+    await model.initiate();
 
-  console.log("Done Trying");
-
-  // Create a client to connect to LM Studio, then load a model
-  const client = new LMStudioClient();
-  try {
-      model = await client.llm.load(process.env.MODEL_PATH);
-      console.log('Model loaded successfully');
-  } catch (error) {
-      console.error(`Error loading model: ${error.message}`);
-  }
-    
-  server = app.listen(process.env.PORT, async () => {
-  console.log(`Server is running on http://localhost:${process.env.PORT}`);
-  });
+    server = app.listen(process.env.PORT, async () => {
+        console.log(`Server is running on http://localhost:${process.env.PORT}`);
+    });
 };
 
-//automatically run when the server starts
-initializeApp();
+const gatherInfo = async (position) => {
+    try {
+        const response = await fetch(`https://explorer.lichess.ovh/masters?fen=${position}`, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        let data = await response.json(); // Parse the JSON response
+        console.log('Opening data:', data); // Log or handle the JSON data
+        return data;
+    } catch (error) {
+        console.error('Error fetching opening data:', error);
+    }
+}
+
 
 app.get('/', (req, res) => {
-  res.send('Server is running');
+    res.send('Server is running');
 });
 
-//not needed?
+//Start the generation process
 app.post('/generate', async (req, res) => {
+    // update the currentBody with the new messages
     currentBody = req.body
+    currentBody.openingData = await gatherInfo(currentBody.position)
+    currentBody.opening = currentBody.openingData.opening
+    currentBody.backgroundInfo = `Here is your Background information: the current position of the chess board in FEN string: ${currentBody.position}\nCurrent opening: ${JSON.stringify(currentBody.opening)}
+    \nHere is the opening game data, where the "white", "black", and "draw" fields are the number of games won by white, black, and drawn, respectively: ${JSON.stringify(currentBody.openingData)}\n\nThe moves played to get here are: ${currentBody.history}`
+
     console.log("Messages:")
     console.log(currentBody.messages)
-    res.status(200).json({ message: 'Prompt received' });
-    // const position = req.body.position
+
+    // Instruct the LLM to decide if they should make a move or not
+    const systemPrompt = "You are a part of a larger helpful chess AI assistant. Your job is to tend to the board. Your output should stricly be a json, sending information about if moves are necessary. As a rule, do the least possible to achieve the result (ie if possible, **don't reset the board every time**, the board will keep its state). Based on message history, the position, and the expected agent response, you have three options:\n\n1. Play a sequence of moves (FEWER MOVES IS BETTER) from the current position (e.g., when the user wants to go move by move, explore a line, or references a common opening or board position, respond with a sequence of moves that will reach that position).\n2. Go to a new position (e.g. when the user asks to explore a new position, like the sicilian defense) **again, this is ONLY for entirely new positions**. This is done by resetting the board, and then doing the necessary moves (make sure not to carry moves from the old position). 3. Do nothing (the user still wants to look at the current board while conversing).\n\nWhen a sequence of moves should be made, respond with a JSON object formatted as follows:\n- **moveMade**: a boolean, set to 'true' if moves are being suggested, otherwise 'false'.\n- **moves**: an array of move strings in the format '<from_square><to_square>' (e.g., 'e2e4', 'g8f6'). If moveMade is 'false', set moves to 'null'.\n- **resetBoard**: a boolean, set to 'true' if the board should be reset before executing the moves, otherwise 'false'.\n\nExamples:\n1. {moveMade: true, moves: ['e2e4', 'd7d5', 'c2c4'], resetBoard: false}\n2. User: Can we explore the sicilian defense? {moveMade: true, moves: ['e2e4', 'c7c5'], resetBoard: true}\n3. {moveMade: false, moves: null, resetBoard: false}\n\nMoves should be determined based on the user's input, the current board position, and logical responses to the user's requests. Ensure that the moves suggested are legal from the current position."
+
+
+    let moves = await model.generate([
+        { role: "system", content: systemPrompt },
+        { role: "context", content: currentBody.backgroundInfo },
+        ...currentBody.messages
+    ]);
+
+    // If the response is ok, send the moves instruction back to the client
+    let successfulGeneration = false
+    let parsedMoves = null
+    while (!successfulGeneration) {
+        console.log(moves)
+        try {
+            // Attempt the operation that may fail
+            parsedMoves = JSON.parse(moves);
+            successfulGeneration = true;  // If the operation succeeds, set the flag to exit the loop
+        } catch (error) {
+            console.log("Operation failed, retrying...");
+            moves = await model.generate([
+                { role: "system", content: systemPrompt },
+                { role: "context", content: currentBody.backgroundInfo },
+                ...currentBody.messages
+            ]);
+        }
+    }
+    
+
+    console.log(`Move: ${moves}`)
+    currentBody.moves = moves
+
+    res.status(200).json({ message: 'Prompt received', moveInstruction: parsedMoves });
 })
 
 app.get('/stream', async (req, res) => {
+    console.log('Received stream request');
     async function main(body) {
-
-        const { messages, position } = body
+        const { messages, position, moves, backgroundInfo } = body
 
         console.log(position)
-        // console.log(ChessEcoCodes(position))
+        let data = ""
 
-        // const queensGambitPos = "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2"
-        // console.log(`Position: ${queensGambitPos}`)
-        // console.log(ChessEcoCodes(queensGambitPos))
-
-        // const stringOpening = JSON.stringify(ChessEcoCodes(queensGambitPos))
-        // const stringOpening = JSON.stringify(ChessEcoCodes(position))
-        let data=""
-
-        try {
-          const response = await fetch(`https://explorer.lichess.ovh/masters?fen=${position}`, {
-              method: "GET",
-              headers: {
-                  "Content-Type": "application/json"
-              }
-          });
-      
-          if (!response.ok) {
-              throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-      
-          data = await response.json(); // Parse the JSON response
-          console.log('Opening data:', data); // Log or handle the JSON data
-        } catch (error) {
-            console.error('Error fetching opening data:', error);
-        }
-
-        const prompt = `Here is your Background information: the current position of the chess board in FEN string: ${position}\nCurrent opening: ${JSON.stringify(data.opening)}
-        \nHere is the opening game data, where the "white", "black", and "draw" fields are the number of games won by white, black, and drawn, respectively: ${JSON.stringify(data)}\n\n
-        Now, continue this conversation as if you knew this all along, and I do not know this information.`
-              
-        console.log(prompt)
+        const systemPrompt = `You are a helpful chess AI assistant. There is another section of the assistant that is executing moves on the chessboard, and has just executed the moves ${moves}. Your job is to respond to the end user.`
 
         // Predict!
-        const prediction = model.respond([
-            { role: "system", content: "You are a helpful chess AI assistant. At the start of *every* prompt, state 'I like chess!'" },
-            // { role: "system", content: `Here is the current position of the chess board in FEN string: ${position}\nCurrent opening: ${ChessEcoCodes(position).name}`},
-            { role: "user", content: prompt},
+        const prediction = model.stream([
+            { role: "system", content: systemPrompt },
+            { role: "context", content: backgroundInfo },
             ...messages
         ]);
 
-        // console.log(`Current opening: ${stringOpening}`)
 
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
         for await (const text of prediction) {
-          if (text == "") console.log("BLANK");
-          console.log(`Sending: ${JSON.stringify(text)}\n\n`)
-          res.write(`data: ${JSON.stringify(text)}\n\n`);
+            if (text == "") console.log("BLANK");
+            // console.log(`Sending: ${JSON.stringify(text)}\n\n`)
+            res.write(`data: ${JSON.stringify(text)}\n\n`);
         }
 
         res.write('data: [DONE]\n\n');
         res.end();
-
-        // console.log(`Posiiton: ${position}`)
-
-        // let output = ''
-
-        // for await (const text of prediction) {
-        //     output += text;
-        //     console.log(text)
-        // }
-
-        // console.log(output)
-        // return output
     }
-    // const outmessage = await main(body)
-    // console.log("Output from server:")
-    // console.log(outmessage)
-    // return res.json({
-    //     'response': outmessage
-    // })
     main(currentBody).catch(error => {
-      console.error('Error generating response:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+        console.error('Error generating response:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     });
 })
 
-
-// Function to run when server shuts down
-function onShutdown() {
-  console.log('Shutting down server...');
-  exec('lms server stop', (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error stopping LMS server: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`Error: ${stderr}`);
-      return;
-    }
-    console.log(`LMS server stopped successfully: ${stdout}`);
-  });
-}
+//automatically run when the server starts
+await initializeApp();
 
 // Handle process termination signals
 process.on('SIGINT', () => {
-  console.log('Received SIGINT. Graceful shutdown');
-  server.close(() => {
-    console.log('HTTP server closed');
-    onShutdown();
-    process.exit(0);
-  });
+    console.log('Received SIGINT. Graceful shutdown');
+    server.close(async () => {
+        console.log('HTTP server closed');
+        await model.shutdown();
+        process.exit(0);
+    });
 });
 
 process.on('SIGTERM', () => {
-  console.log('Received SIGTERM. Graceful shutdown');
-  server.close(() => {
-    console.log('HTTP server closed');
-    onShutdown();
-    process.exit(0);
-  });
+    console.log('Received SIGTERM. Graceful shutdown');
+    server.close(async () => {
+        console.log('HTTP server closed');
+        await model.shutdown();
+        process.exit(0);
+    });
 });
 
 // Handle process exit
 process.on('exit', () => {
-  console.log('Process exiting');
-  onShutdown();
+    console.log('Process exiting');
+    model.shutdown();
 });
-
-
-// import express from 'express'
-// import bodyParser from 'body-parser'
-// import { exec } from 'child_process';
-
-// const app = express();
-// const port = 5100;
-
-// app.use(bodyParser.json());
-
-// app.post('/generate', (req, res) => {
-//     const prompt = req.body.prompt;
-
-//     exec(`python gpt4all_script.py "${prompt}"`, (error, stdout, stderr) => {
-//         if (error) {
-//             console.error(`Error: ${error.message}`);
-//             return res.status(500).json({ error: 'Internal Server Error' });
-//         }
-//         if (stderr) {
-//             console.error(`Stderr: ${stderr}`);
-//             // return res.status(500).json({ error: 'Internal Server Error' });
-//         }
-
-//         res.json({ response: stdout.trim() });
-//     });
-// });
-
-// app.listen(port, () => {
-//     console.log(`Server is running on http://localhost:${port}`);
-// });

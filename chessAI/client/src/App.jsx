@@ -19,7 +19,7 @@ function App() {
   const [deleting, setDeleting] = useState(false)
   const [isWhiteToMove, setIsWhiteToMove] = useState(true)
   
-  console.log(`History: ${game.history()}`)
+  // console.log(`History: ${game.history()}`)
   
   //Splitter Logic
   const [split, setSplit] = useState(60);
@@ -42,7 +42,7 @@ function App() {
       }
   };
 
-  console.log(`Split: ${split}`)
+  // console.log(`Split: ${split}`)
 
   const clearBoard = () => {
     const fenString = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"
@@ -82,7 +82,7 @@ function App() {
             <div id="splitter" onMouseDown={handleMouseDown}></div>
             <ChatDisplay messages={messages} style={{ flex: 100 - split }}/>
           </div>
-          <ChatInput {... {messages, setMessages, input, setInput, game}} />
+          <ChatInput {... {messages, setMessages, input, setInput, game, setHistory, setPosition}} />
         </div>
       </body>
     </>

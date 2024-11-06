@@ -1,3 +1,5 @@
+import ReactMarkdown from 'react-markdown';
+
 const ChatDisplay = ({messages, style}) => {
     const messageElements = messages.map((message, index) => {
         return (
@@ -5,13 +7,12 @@ const ChatDisplay = ({messages, style}) => {
                 key={index}
                 className={`message ${message.role}`}
             >
-                {message.content}
+                <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
         )
     })
 
-    console.log("Hello")
-    console.log(messageElements)
+    // console.log(messageElements)
 
     return (
         <div id='chat-display-section' style={style}>
