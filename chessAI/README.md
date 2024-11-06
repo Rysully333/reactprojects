@@ -14,8 +14,10 @@ The default LLM agent is Cohere AI, accessible from the npm package cohere-ai (w
 In addition, information from the Lichess database is used to augment user and board information.
 
 ### Instuctions to run
-Install packages - "npm i"
+Install packages - "npm i".
+
 To run the frontend, "npm run dev".
+
 To run the backend, navigate to the server.js file, and run "node server.js"
 
 ### Example Use Cases
